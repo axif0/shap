@@ -11,7 +11,7 @@ import numpy.typing as npt
 import pandas as pd
 import scipy.sparse
 import sklearn
-from _kernel_lib import _exp_val
+from shap._ext import _exp_val
 from packaging import version
 from scipy.special import binom
 from sklearn.linear_model import Lasso, LassoLarsIC, lars_path
