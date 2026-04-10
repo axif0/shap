@@ -19,6 +19,11 @@ from ._explainer import Explainer
 
 log = logging.getLogger("shap")
 
+try:
+    from .._explainers import compute_grey_code_row_values as _compute_grey_code_row_values_cpp
+except ImportError:
+    _compute_grey_code_row_values_cpp = None
+
 
 class ExactExplainer(Explainer):
     """Computes SHAP values via an optimized exact enumeration.
@@ -224,7 +229,6 @@ class ExactExplainer(Explainer):
         }
 
 
-@njit
 def _compute_grey_code_row_values(
     row_values: npt.NDArray[Any],
     mask: npt.NDArray[np.bool_],
@@ -234,28 +238,24 @@ def _compute_grey_code_row_values(
     extended_delta_indexes: npt.NDArray[np.intp],
     noop_code: int,
 ) -> None:
-    set_size = 0
-    M = len(inds)
-    for i in range(2**M):
-        # update the mask
-        delta_ind = extended_delta_indexes[i]
-        if delta_ind != noop_code:
-            mask[delta_ind] = ~mask[delta_ind]
-            if mask[delta_ind]:
-                set_size += 1
-            else:
-                set_size -= 1
+    if _compute_grey_code_row_values_cpp is None:
+        raise ImportError("Missing compiled extension 'shap._explainers' required for _compute_grey_code_row_values.")
 
-        # update the output row values
-        on_coeff = shapley_coeff[set_size - 1]
-        if set_size < M:
-            off_coeff = shapley_coeff[set_size]
-        out = outputs[i]
-        for j in inds:
-            if mask[j]:
-                row_values[j] += out * on_coeff
-            else:
-                row_values[j] -= out * off_coeff
+    # Keep row_values in-place whenever possible while normalizing other inputs for the C++ API.
+    row_values_view = row_values if row_values.flags.c_contiguous else np.ascontiguousarray(row_values)
+    outputs_view = np.ascontiguousarray(outputs, dtype=row_values_view.dtype)
+    coeff_view = np.ascontiguousarray(shapley_coeff, dtype=row_values_view.dtype)
+    _compute_grey_code_row_values_cpp(
+        row_values_view,
+        np.ascontiguousarray(mask),
+        np.ascontiguousarray(inds, dtype=np.int64),
+        outputs_view,
+        coeff_view,
+        np.ascontiguousarray(extended_delta_indexes, dtype=np.int64),
+        noop_code,
+    )
+    if row_values_view is not row_values:
+        row_values[...] = row_values_view
 
 
 @njit

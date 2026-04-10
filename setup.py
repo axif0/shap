@@ -4,6 +4,7 @@ import subprocess
 import sys
 import sysconfig
 
+import nanobind
 import numpy as np
 from packaging.version import Version, parse
 from setuptools import Extension, setup
@@ -140,6 +141,19 @@ def run_setup(*, with_binary, with_cuda):
 
     ext_modules.append(
         Extension("_kernel_lib", sources=["shap/explainers/_kernel_lib.pyx"], include_dirs=[np.get_include()])
+    )
+    ext_modules.append(
+        Extension(
+            "shap._explainers",
+            sources=["shap/cext/_explainers.cpp", os.path.join(nanobind.source_dir(), "nb_combined.cpp")],
+            include_dirs=[
+                np.get_include(),
+                nanobind.include_dir(),
+                nanobind.source_dir(),
+                os.path.join(os.path.dirname(nanobind.source_dir()), "ext", "robin_map", "include"),
+            ],
+            extra_compile_args=["/std:c++17"] if sys.platform == "win32" else ["-std=c++17"],
+        )
     )
 
     setup(ext_modules=ext_modules)
