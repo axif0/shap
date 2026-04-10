@@ -216,10 +216,8 @@ local_scheme = "no-local-version"
 addopts = "--mpl -m 'not xslow'"
 testpaths = ["tests"]
 filterwarnings = [
-  # gast (TensorFlow dependency): DeprecationWarning on Python 3.13+ re: ast nodes; upstream issue.
-  "ignore:.*___pyct_anno.*:DeprecationWarning:gast",
-  # DeepExplainer on TensorFlow 2.4+ in eager mode.
-  "ignore:.*graph support has been removed in eager mode.*:UserWarning:shap.explainers._deep.deep_tf",
+  # DeepExplainer's TF 2.4+ eager UserWarning (deep_tf.py);
+  "ignore:Your TensorFlow version is newer than 2\\.4\\.0 and so graph support has been removed in eager mode and some static graphs may not be supported\\. See PR #1483 for discussion\\.:UserWarning",
   # Ignore warnings that are entirely from 3rd party libs outside our control
   "ignore:.*distutils Version classes are deprecated.*:DeprecationWarning:.*pandas.*",
   "ignore:.*typing.io is deprecated.*:DeprecationWarning:.*pyspark.*",
